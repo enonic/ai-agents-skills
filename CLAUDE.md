@@ -144,6 +144,10 @@ The `description` determines when an agent activates the skill. Be specific and 
 - Creating scripts with undocumented external dependencies
 - Using absolute paths or paths outside the skill directory
 
+## Issues and PRs
+
+Use the `local-issue-creator` skill to create and manage issues and PRs in this repo.
+
 ## Commit Messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>: <description>`

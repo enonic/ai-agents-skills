@@ -15,4 +15,3 @@ node_modules/
 # AI
 .claude/settings.local.json
 .claude/plans/
-.agents/plans/
