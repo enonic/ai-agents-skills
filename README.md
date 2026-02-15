@@ -80,6 +80,16 @@ No skills yet — see [Creating a Skill](#creating-a-skill) below.
 5. Update the table above
 6. Add the skill path to `.claude-plugin/marketplace.json` under `plugins[0].skills`
 
+## Releasing
+
+Use the `/skills-release` skill (local) to automate the full release workflow, or do it manually:
+
+1. Ensure you're on `master` with a clean working tree
+2. Update version in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
+3. Commit: `git commit -m "Release vX.Y.Z"`
+4. Tag: `git tag vX.Y.Z`
+5. Push: `git push && git push --tags`
+
 ## License
 
 [MIT](LICENSE)
