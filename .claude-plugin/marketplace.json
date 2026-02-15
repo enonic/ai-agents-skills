@@ -10,8 +10,10 @@
       "name": "skills",
       "source": "./",
       "description": "Collection of AI agent skills for Enonic development workflows",
-      "version": "0.1.0",
-      "skills": ["enonic-cli"]
+      "version": "0.2.0",
+      "skills": [
+        "enonic-cli"
+      ]
     }
   ]
 }
