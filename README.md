@@ -68,8 +68,7 @@ See the full [Agent Skills specification](https://agentskills.io/specification) 
 
 | Skill | Description | Agent | Category |
 | ----- | ----------- | ----- | -------- |
-
-No skills yet — see [Creating a Skill](#creating-a-skill) below.
+| [enonic-cli](enonic-cli/) | Reference for the Enonic CLI. Covers project, sandbox, data, and server commands. | Claude Code, Codex | CLI |
 
 ## Creating a Skill
 
