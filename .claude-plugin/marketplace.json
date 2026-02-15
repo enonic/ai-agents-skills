@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "skills",
+  "name": "enonic",
   "owner": {
     "name": "Enonic",
     "url": "https://enonic.com"
@@ -11,7 +11,7 @@
       "source": "./",
       "description": "Collection of AI agent skills for Enonic development workflows",
       "version": "0.1.0",
-      "skills": []
+      "skills": ["enonic-cli"]
     }
   ]
 }

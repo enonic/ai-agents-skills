@@ -10,7 +10,7 @@ Add the marketplace and install the skills plugin:
 
 ```
 /plugin marketplace add enonic/ai-agents-skills
-/plugin install skills@skills
+/plugin install enonic@skills
 ```
 
 This makes all skills available in your Claude Code sessions.
@@ -19,9 +19,9 @@ This makes all skills available in your Claude Code sessions.
 
 | Scope          | Command                                       | Use case                |
 | -------------- | --------------------------------------------- | ----------------------- |
-| User (default) | `/plugin install skills@skills`                | Personal — all projects |
-| Project        | `/plugin install skills@skills --scope project` | Team — shared via Git   |
-| Local          | `/plugin install skills@skills --scope local`   | Project — gitignored    |
+| User (default) | `/plugin install enonic@skills`                | Personal — all projects |
+| Project        | `/plugin install enonic@skills --scope project` | Team — shared via Git   |
+| Local          | `/plugin install enonic@skills --scope local`   | Project — gitignored    |
 
 ### Codex
 
