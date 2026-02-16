@@ -13,7 +13,7 @@
       "name": "dev",
       "source": "./",
       "description": "Collection of AI agent skills for Enonic development workflows",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Enonic",
         "email": "hello@enonic.com"
