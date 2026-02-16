@@ -77,7 +77,6 @@ See the full [Agent Skills specification](https://agentskills.io/specification) 
 3. Write Markdown instructions in the body (keep under 500 lines)
 4. Optionally add `scripts/`, `references/`, or `assets/` directories
 5. Update the table above
-6. Add the skill path to `.claude-plugin/marketplace.json` under `plugins[0].skills`
 
 ## Releasing
 

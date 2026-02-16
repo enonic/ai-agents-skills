@@ -1,46 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Validate that all skill directories are listed in marketplace.json and vice versa.
+# Validate that all skill directories have a valid SKILL.md with required frontmatter.
 
-MARKETPLACE=".claude-plugin/marketplace.json"
+PLUGIN=".claude-plugin/plugin.json"
 
-if [ ! -f "$MARKETPLACE" ]; then
-  echo "::error::$MARKETPLACE not found"
+if [ ! -f "$PLUGIN" ]; then
+  echo "::error::$PLUGIN not found"
   exit 1
 fi
 
-# Skill directories: top-level dirs containing SKILL.md (exclude .claude/)
-dir_skills=$(find . -maxdepth 2 -name SKILL.md -not -path './.claude/*' \
-  | sed 's|^\./||; s|/SKILL.md$||' | sort)
+# Resolve skills root from plugin.json (e.g. "./" -> ".")
+skills_root=$(jq -r '.skills // empty' "$PLUGIN" | sed 's|/$||; s|^\.$||; s|^$|.|')
 
-# Skills listed in marketplace.json (strip leading ./)
-json_skills=$(jq -r '.plugins[0].skills[]' "$MARKETPLACE" \
-  | sed 's|^\./||' | sort)
+if [ -z "$skills_root" ] || [ "$skills_root" = "null" ]; then
+  echo "::error::No 'skills' field in $PLUGIN"
+  exit 1
+fi
 
-missing_from_json=$(comm -23 <(echo "$dir_skills") <(echo "$json_skills"))
-missing_from_dirs=$(comm -13 <(echo "$dir_skills") <(echo "$json_skills"))
+# Find skill directories containing SKILL.md (exclude hidden dirs)
+skills=$(find "$skills_root" -maxdepth 2 -name SKILL.md -not -path '*/.*' \
+  | sed 's|/SKILL.md$||; s|^\./||' | sort)
+
+if [ -z "$skills" ]; then
+  echo "::error::No skills found under '$skills_root'"
+  exit 1
+fi
 
 errors=0
 
-if [ -n "$missing_from_json" ]; then
-  echo "Skills missing from $MARKETPLACE:"
-  while IFS= read -r skill; do
-    echo "  ::error::$skill has SKILL.md but is not in marketplace.json"
-  done <<< "$missing_from_json"
-  errors=1
-fi
+while IFS= read -r skill; do
+  skill_file="$skill/SKILL.md"
 
-if [ -n "$missing_from_dirs" ]; then
-  echo "Stale entries in $MARKETPLACE:"
-  while IFS= read -r skill; do
-    echo "  ::error::$skill is in marketplace.json but has no SKILL.md"
-  done <<< "$missing_from_dirs"
-  errors=1
-fi
+  # Check required frontmatter: name
+  name=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep -E '^name:' | head -1 | sed 's/^name:[[:space:]]*//')
+  if [ -z "$name" ]; then
+    echo "::error::$skill_file missing required 'name' frontmatter"
+    errors=1
+  elif [ "$name" != "$skill" ]; then
+    echo "::error::$skill_file 'name: $name' does not match directory '$skill'"
+    errors=1
+  fi
+
+  # Check required frontmatter: description
+  desc=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep -E '^description:' | head -1)
+  if [ -z "$desc" ]; then
+    echo "::error::$skill_file missing required 'description' frontmatter"
+    errors=1
+  fi
+done <<< "$skills"
 
 if [ "$errors" -eq 1 ]; then
   exit 1
 fi
 
-echo "All skills are in sync with $MARKETPLACE"
+echo "Validated $(echo "$skills" | wc -l | tr -d ' ') skill(s): $(echo "$skills" | tr '\n' ' ')"

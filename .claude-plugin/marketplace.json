@@ -1,9 +1,12 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "enonic",
+  "metadata": {
+    "description": "AI agent skills for Enonic development workflows"
+  },
   "owner": {
     "name": "Enonic",
-    "url": "https://enonic.com"
+    "email": "hello@enonic.com"
   },
   "plugins": [
     {
@@ -11,9 +14,11 @@
       "source": "./",
       "description": "Collection of AI agent skills for Enonic development workflows",
       "version": "0.2.0",
-      "skills": [
-        "enonic-cli"
-      ]
+      "author": {
+        "name": "Enonic",
+        "email": "hello@enonic.com"
+      },
+      "category": "development"
     }
   ]
 }

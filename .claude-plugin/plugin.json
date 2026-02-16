@@ -4,10 +4,11 @@
   "description": "Collection of AI agent skills for Enonic development workflows",
   "author": {
     "name": "Enonic",
-    "url": "https://enonic.com"
+    "email": "hello@enonic.com"
   },
   "repository": "https://github.com/enonic/ai-agents-skills",
   "license": "MIT",
+  "skills": "./",
   "keywords": [
     "skills",
     "enonic",
