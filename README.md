@@ -6,11 +6,11 @@ Enonic's collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 
 ### Claude Code
 
-Add the marketplace and install the skills plugin:
+Add the marketplace and install the dev plugin:
 
 ```
 /plugin marketplace add enonic/ai-agents-skills
-/plugin install enonic@skills
+/plugin install enonic@dev
 ```
 
 This makes all skills available in your Claude Code sessions.
@@ -19,9 +19,9 @@ This makes all skills available in your Claude Code sessions.
 
 | Scope          | Command                                       | Use case                |
 | -------------- | --------------------------------------------- | ----------------------- |
-| User (default) | `/plugin install enonic@skills`                | Personal — all projects |
-| Project        | `/plugin install enonic@skills --scope project` | Team — shared via Git   |
-| Local          | `/plugin install enonic@skills --scope local`   | Project — gitignored    |
+| User (default) | `/plugin install enonic@dev`                | Personal — all projects |
+| Project        | `/plugin install enonic@dev --scope project` | Team — shared via Git   |
+| Local          | `/plugin install enonic@dev --scope local`   | Project — gitignored    |
 
 ### Codex
 
