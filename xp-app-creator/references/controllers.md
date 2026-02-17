@@ -167,6 +167,106 @@ export function get(req: XP.Request): XP.Response {
 }
 ```
 
+### Common Service Patterns
+
+#### Config Service
+
+Admin tools often expose a config service that returns app configuration as JSON. The frontend fetches this on initialization instead of embedding config in the HTML.
+
+**`services/config/config.js`**:
+
+```js
+var admin = require('/lib/xp/admin');
+var portal = require('/lib/xp/portal');
+
+exports.get = function(req) {
+    return {
+        status: 200,
+        contentType: 'application/json',
+        body: {
+            adminUrl: admin.getBaseUri(),
+            appId: app.name,
+            assetsUri: portal.assetUrl({ path: '' }),
+            toolUri: admin.getToolUrl(app.name, 'main')
+        }
+    };
+};
+```
+
+The admin tool HTML template passes the config service URL to the frontend via a data attribute:
+
+```html
+<script defer src="{{assetsUri}}/js/app.js"
+        data-config-service-url="{{configServiceUrl}}"></script>
+```
+
+Frontend reads it on init:
+
+```js
+var configUrl = document.currentScript.getAttribute('data-config-service-url');
+fetch(configUrl).then(function(res) { return res.json(); }).then(initApp);
+```
+
+#### Config Injection (XP 8+)
+
+XP 8 embeds config as inline JSON in the HTML instead of fetching it from a service. This eliminates the extra HTTP request and makes config available synchronously.
+
+**Controller** — serialize config and inject into the template:
+
+```js
+var config = {
+    adminUrl: admin.getBaseUri(),
+    appId: app.name,
+    assetsUri: portal.assetUrl({ path: '' })
+};
+
+var params = {
+    configScriptId: app.name + '.config',
+    configAsJson: JSON.stringify(config).replace(/<(\/?script|!--)/gi, '\\u003C$1')
+};
+```
+
+The `.replace()` call prevents XSS by escaping `<script>`, `</script>`, and `<!--` sequences within the JSON string.
+
+**HTML template**:
+
+```html
+<script type="application/json" id="{{configScriptId}}">{{{configAsJson}}}</script>
+<script defer src="{{assetsUri}}/js/bundle.js"
+        data-config-script-id="{{configScriptId}}"></script>
+```
+
+**Frontend** — read config from the DOM:
+
+```js
+var scriptId = document.currentScript.getAttribute('data-config-script-id');
+var config = JSON.parse(document.getElementById(scriptId).textContent);
+```
+
+#### i18n Service
+
+A dedicated service returns localized phrase bundles as JSON, enabling client-side localization without server-side rendering of each string.
+
+**`services/i18n/i18n.js`**:
+
+```js
+var i18nLib = require('/lib/xp/i18n');
+
+exports.get = function(req) {
+    var locales = req.params.locale ? [req.params.locale] : [];
+
+    return {
+        status: 200,
+        contentType: 'application/json',
+        body: i18nLib.getPhrases(locales, ['i18n/phrases'])
+    };
+};
+```
+
+`getPhrases(locales, bundles)` returns all key-value pairs from the specified bundles as a flat object. The frontend stores these and uses them for UI text lookup.
+
+> **XP 8+**: Implement as a Universal API at `apis/i18n/i18n.js` with an `apis/i18n/i18n.xml` descriptor. The controller code is identical. Use `apiUrl({ api: 'i18n' })` for URL resolution, and declare `<api>i18n</api>` in the admin tool descriptor's `<apis>` element.
+
 ## API Controllers (Universal API — XP 8+)
 
 Universal APIs replace services as the recommended way to expose HTTP endpoints in XP 8+. Services remain valid for XP 7. Located in `apis/<name>/`.
@@ -240,6 +340,9 @@ const url = apiUrl({ api: 'my-api' });
 
 // Cross-app API
 const externalUrl = apiUrl({ api: 'their-api', application: 'com.other.app' });
+
+// API with sub-path (useful for REST-style endpoints)
+const installUrl = apiUrl({ api: 'my-api', path: 'sub/endpoint' });
 ```
 
 ### APIs in Admin Tool Descriptors
@@ -260,7 +363,7 @@ Admin tools must declare which APIs they use via the `<apis>` element:
 </tool>
 ```
 
-Unqualified names (e.g. `my-api`) refer to APIs in the same app. Use `<app-key>:<api-name>` for cross-app references.
+Unqualified names (e.g. `my-api`) refer to APIs in the same app. Use `<app-key>:<api-name>` for cross-app references. The `<apis>` element is XP 8+ only. XP 7 admin tools do not declare APIs — services are implicitly available.
 
 ### System APIs (XP 8+)
 
@@ -408,6 +511,9 @@ exports.get = function(req) {
 
 **Admin lib functions** (`/lib/xp/admin`):
 - `getAssetsUri()` -- base URL for admin UI assets
+- `getBaseUri()` -- base URL for admin console
+- `getLauncherPath()` -- URL to the admin launcher script
+- `getLocales()` -- active locales for the admin session
 - `getToolUrl(app, tool)` -- URL for a specific admin tool
 - `getHomeToolUrl()` -- URL for the admin home tool
 - `widgetUrl({ application, widget, params })` -- URL for an admin widget
@@ -418,6 +524,120 @@ In admin tools where portal context isn't available, use `/lib/enonic/asset` ins
 var assetLib = require('/lib/enonic/asset');
 var assetsUri = assetLib.assetUrl({ path: '' });
 ```
+
+### HTML Template
+
+Admin tools render an HTML page that loads the launcher, CSS, JS bundle, and passes config:
+
+**`admin/tools/dashboard/dashboard.html`** (Mustache):
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="{{assetsUri}}/icons/favicon-32.png" sizes="32x32">
+    <link rel="stylesheet" href="{{assetsUri}}/styles/main.css">
+</head>
+<body>
+    <script async src="{{launcherPath}}" data-config-theme="dark"></script>
+    <script defer src="{{assetsUri}}/js/app.js"
+            data-config-service-url="{{configServiceUrl}}"></script>
+</body>
+</html>
+```
+
+The controller provides the template variables:
+
+```js
+var params = {
+    assetsUri: portal.assetUrl({ path: '' }),
+    launcherPath: admin.getLauncherPath(),
+    configServiceUrl: portal.serviceUrl({ service: 'config' })
+};
+```
+
+- **Launcher script** (`async`) — loads the shared admin launcher UI (top bar, navigation)
+- **App bundle** (`defer`) — the app's own JS; `data-config-service-url` tells it where to fetch config
+- **Favicon** — include multiple sizes (32x32, 128x128) and platform variants (iOS, Android) as needed
+
+### HTML Template (XP 8+)
+
+XP 8 replaces the launcher script with `widgetUrl()` and delivers config as inline JSON instead of a service fetch:
+
+**`admin/tools/dashboard/dashboard.html`** (Mustache):
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="{{assetsUri}}/icons/favicon-32.png" sizes="32x32">
+    <link rel="stylesheet" href="{{adminAssetsUri}}/styles/lib.css">
+    <link rel="stylesheet" href="{{assetsUri}}/styles/main.css">
+    <script src="{{adminAssetsUri}}/js/lib.js"></script>
+</head>
+<body>
+    <script type="application/json" id="{{configScriptId}}">{{{configAsJson}}}</script>
+    <script defer src="{{assetsUri}}/js/bundle.js"
+            data-config-script-id="{{configScriptId}}"></script>
+</body>
+</html>
+```
+
+The controller provides the template variables:
+
+```js
+var admin = require('/lib/xp/admin');
+var portal = require('/lib/xp/portal');
+
+var config = {
+    adminUrl: admin.getBaseUri(),
+    appId: app.name,
+    assetsUri: portal.assetUrl({ path: '' }),
+    launcherUrl: admin.widgetUrl({ application: 'admin', widget: 'widget' }),
+    toolUri: admin.getToolUrl(app.name, 'dashboard')
+};
+
+var params = {
+    adminAssetsUri: admin.getAssetsUri(),
+    assetsUri: portal.assetUrl({ path: '' }),
+    configScriptId: app.name + '.config',
+    configAsJson: JSON.stringify(config).replace(/<(\/?script|!--)/gi, '\\u003C$1')
+};
+```
+
+Frontend reads config synchronously from the DOM:
+
+```js
+var scriptId = document.currentScript.getAttribute('data-config-script-id');
+var config = JSON.parse(document.getElementById(scriptId).textContent);
+initApp(config);
+```
+
+Key differences from XP 7:
+- **Admin common assets** — `lib.css` and `lib.js` loaded from `adminAssetsUri` (shared admin UI framework)
+- **Inline JSON config** — embedded in a `<script type="application/json">` block, no extra HTTP request
+- **Launcher via `widgetUrl()`** — replaces `getLauncherPath()` + `<script async>`
+- **XSS protection** — `replace(/<(\/?script|!--)/gi, '\\u003C$1')` prevents script injection in JSON
+
+### Content-Security-Policy
+
+Admin tools that load external resources (e.g., from Enonic Market) should set CSP headers in the controller response:
+
+```js
+return {
+    contentType: 'text/html',
+    body: mustache.render(view, params),
+    headers: {
+        'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://market.enonic.com"
+    }
+};
+```
+
+Adjust the `connect-src` directive to whitelist only the external domains your app actually contacts.
 
 ## Widget Controllers
 

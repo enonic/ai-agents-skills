@@ -17,7 +17,7 @@ metadata:
 
 ## Critical Rules
 
-1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, `<task>`, and `<service>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`) and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace.
+1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, and `<task>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`), `<service>` descriptors, and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace.
 2. **File naming** -- Component directory name must match descriptor filename: `parts/my-part/my-part.xml`. Content types: `content-types/article/article.xml`.
 3. **Controller resolution** -- XP looks for `<name>.js` next to `<name>.xml`. In TS apps, tsup/webpack compiles `<name>.ts` to `<name>.js` in `build/resources/main/`.
 4. **Form field names** -- Must be unique within a form. Use `name` attribute on `<input>`, not `id`.
@@ -221,7 +221,7 @@ See `references/input-types.md` for full XML examples and config options.
 - `getSiteConfig()` -- site.xml config values
 - `assetUrl({ path })` -- URL to static asset
 - `serviceUrl({ service })` -- URL to service controller
-- `apiUrl({ api })` -- URL to API endpoint **(XP 8+)**
+- `apiUrl({ api, path? })` -- URL to API endpoint **(XP 8+)**
 - `pageUrl({ path })` -- URL to content path
 - `imageUrl({ id, scale })` -- URL to image
 
@@ -243,7 +243,8 @@ See `references/input-types.md` for full XML examples and config options.
 - `app.version` -- application version
 - `app.config` -- values from `<appName>.cfg` in XP home config directory (e.g. `com.example.myapp.cfg`)
 - `log.info()`, `log.error()`, `log.debug()`, `log.warning()`
-- `__` (double underscore) -- Java interop (`__.newBean()`, `__.toNativeObject()`)
+- `__` (double underscore) -- Java interop (`__.newBean()`, `__.toNativeObject()`, `__.toScriptValue()`)
+- `Java.type(className)` -- direct Java class access (e.g. `Java.type('com.enonic.xp.name.NamePrettyfier')`)
 - `resolve(path)` -- resolve relative resource path
 
 **Controller response format**:

@@ -89,6 +89,7 @@ include "com.enonic.lib:lib-http-client:3.2.2"
 include "com.enonic.lib:lib-router:3.1.0"
 include "com.enonic.lib:lib-cache:2.2.0"
 include "com.enonic.lib:lib-static:1.0.3"
+include "com.enonic.lib:lib-graphql:2.0.1"
 ```
 
 **`implementation`** -- compile-time dependency (API access)
@@ -430,6 +431,46 @@ module.exports = {
 };
 ```
 
+### Webpack Production Optimization
+
+For production builds, add optimization plugins:
+
+```js
+const TerserPlugin = require('terser-webpack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
+
+module.exports = {
+    // ...base config above...
+    optimization: isProd ? {
+        minimizer: [new TerserPlugin({
+            terserOptions: {
+                keep_classnames: true,
+                keep_fnames: true
+            }
+        })]
+    } : undefined,
+    plugins: [
+        new MiniCssExtractPlugin(),
+        new CopyPlugin({
+            patterns: [
+                { from: 'icons', to: 'icons' }
+            ]
+        })
+    ]
+};
+```
+
+- **`keep_classnames: true`** — required when XP UI uses class names for identification (e.g., `lib-admin-ui` class-based components)
+- **CopyWebpackPlugin** — copies static assets (icons, favicons) that are not imported in JS/TS
+
+When using webpack for assets, exclude the assets directory from Gradle's `processResources` (webpack outputs to `build/resources/main/assets/` directly):
+
+```gradle
+processResources {
+    exclude 'assets/**'
+}
+```
+
 For Webpack-based TS apps, use `.swcrc`:
 
 ```json
@@ -443,11 +484,130 @@ For Webpack-based TS apps, use `.swcrc`:
 }
 ```
 
-## Vite (Alternative)
+## Vite (XP 8)
 
-Some XP 8 apps use Vite instead of tsup or webpack. Vite provides faster builds and HMR.
-The configuration pattern is similar to webpack but uses `vite.config.ts`.
-Vite is commonly used for admin tools with complex frontends.
+XP 8 apps typically use Vite instead of tsup or webpack, paired with **pnpm** as the package manager. Vite provides faster builds and uses esbuild for transpilation.
+
+### vite.config.ts
+
+XP 8 admin tools commonly use a **dual-target build** — one pass for JS and one for CSS — controlled by a `BUILD_TARGET` environment variable:
+
+```ts
+import { defineConfig } from 'vite';
+
+const isProd = process.env.NODE_ENV === 'production';
+const target = process.env.BUILD_TARGET; // 'js' or 'css'
+
+const jsConfig = defineConfig({
+    build: {
+        lib: {
+            entry: 'src/main/resources/assets/js/main.ts',
+            formats: ['iife'],
+            name: 'MyApp',
+            fileName: () => 'js/bundle.js',
+        },
+        outDir: 'build/resources/main/assets',
+        target: 'es2023',
+        rollupOptions: {
+            output: {
+                assetFileNames: (info) => {
+                    if (info.name?.endsWith('.css')) return 'styles/[name][extname]';
+                    return 'assets/[name][extname]';
+                },
+            },
+        },
+        minify: isProd ? 'esbuild' : false,
+        emptyOutDir: false,
+    },
+    esbuild: {
+        keepNames: true,
+        treeShaking: true,
+        drop: isProd ? ['console'] : [],
+    },
+});
+
+const cssConfig = defineConfig({
+    build: {
+        lib: {
+            entry: 'src/main/resources/assets/styles/main.less',
+            formats: ['es'],
+            fileName: () => '_delete_me.js',
+        },
+        outDir: 'build/resources/main/assets',
+        emptyOutDir: false,
+    },
+    css: {
+        preprocessorOptions: {
+            less: {},
+        },
+        postcss: {
+            plugins: [
+                // autoprefixer, cssnano (prod), postcss-normalize, postcss-sort-media-queries
+            ],
+        },
+    },
+});
+
+export default target === 'css' ? cssConfig : jsConfig;
+```
+
+Key options:
+- **`keepNames: true`** — required when UI framework uses class names for identification
+- **`treeShaking: true`** — eliminates dead code
+- **`drop: ['console']`** — strips console calls in production
+- **`es2023` target** — matches XP 8's Node >= 24 requirement
+- **Dual build** — JS and CSS are built separately because Vite's CSS extraction works differently with library mode; the CSS build produces a throwaway JS file
+
+### PostCSS Pipeline
+
+For LESS + PostCSS, install:
+
+```bash
+pnpm add -D less postcss autoprefixer cssnano postcss-normalize postcss-sort-media-queries
+```
+
+### Gradle Integration
+
+The Gradle task pattern is the same as tsup, but calls `pnpm` instead of `npm` and may run multiple `vite build` passes:
+
+```gradle
+plugins {
+    id 'com.enonic.xp.app' version '4.0.0'
+    id 'com.github.node-gradle.node' version '7.1.0'
+}
+
+node {
+    download = true
+    version = '24.13.0'
+}
+
+tasks.register('pnpmBuild', PnpmTask) {
+    args = ['run', '--silent', 'build']
+    dependsOn pnpmInstall
+    environment = [
+        'FORCE_COLOR': 'true',
+        'NODE_ENV': project.hasProperty('dev') || project.hasProperty('development')
+            ? 'development' : 'production'
+    ]
+    inputs.dir 'src/main/resources'
+    outputs.dir 'build/resources/main'
+    outputs.upToDateWhen { false }
+}
+
+jar.dependsOn pnpmBuild
+```
+
+The `package.json` scripts invoke Vite with the target:
+
+```json
+{
+    "scripts": {
+        "build": "pnpm run build:js && pnpm run build:css",
+        "build:js": "BUILD_TARGET=js vite build",
+        "build:css": "BUILD_TARGET=css vite build"
+    }
+}
+```
 
 ## Build Commands
 
@@ -532,4 +692,39 @@ Access from JS/TS controllers:
 ```js
 var myService = __.newBean('com.example.myapp.MyService');
 var result = myService.process('input');
+```
+
+### ScriptBean Interface
+
+Java classes accessed via `__.newBean()` should implement `ScriptBean`. This provides lifecycle management and OSGi service injection through `BeanContext`:
+
+```java
+package com.example.myapp;
+
+import com.enonic.xp.script.bean.BeanContext;
+import com.enonic.xp.script.bean.ScriptBean;
+
+public class MyConfigBean implements ScriptBean {
+    private MyService myService;
+
+    public String getConfigValue() {
+        return myService.getConfigValue();
+    }
+
+    @Override
+    public void initialize(BeanContext context) {
+        myService = context.getService(MyService.class).get();
+    }
+}
+```
+
+- `initialize(BeanContext)` is called once when the bean is created via `__.newBean()`
+- `context.getService(Class)` retrieves OSGi services (equivalent to `@Reference` injection in `@Component` classes)
+- The bean is instantiated per call to `__.newBean()` — it is not a singleton
+
+Usage from JS:
+
+```js
+var bean = __.newBean('com.example.myapp.MyConfigBean');
+var value = bean.getConfigValue();
 ```
