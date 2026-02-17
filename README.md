@@ -69,6 +69,7 @@ See the full [Agent Skills specification](https://agentskills.io/specification) 
 | Skill | Description | Agent | Category |
 | ----- | ----------- | ----- | -------- |
 | [enonic-cli](enonic-cli/) | Reference for the Enonic CLI. Covers project, sandbox, data, and server commands. | Claude Code, Codex | CLI |
+| [skill-report](skill-report/) | Records skill execution failures for author review and skill improvement. Use when a skill produces incorrect results or the user corrects skill-driven behavior. | Claude Code, Codex | Development |
 | [xp-app-creator](xp-app-creator/) | Enonic XP application guide. Covers project setup, components, schemas, controllers, and build configuration. | Claude Code, Codex | Development |
 
 ## Creating a Skill
