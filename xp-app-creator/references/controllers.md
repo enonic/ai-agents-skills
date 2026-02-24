@@ -215,7 +215,7 @@ XP 8 embeds config as inline JSON in the HTML instead of fetching it from a serv
 
 ```js
 var config = {
-    adminUrl: admin.getBaseUri(),
+    adminUrl: admin.getHomeToolUrl({ type: 'server' }),
     appId: app.name,
     assetsUri: portal.assetUrl({ path: '' })
 };
@@ -357,7 +357,7 @@ Admin tools must declare which APIs they use via the `<apis>` element:
   </allow>
   <apis>
     <api>my-api</api>
-    <api>admin:widget</api>
+    <api>admin:extension</api>
     <api>com.other.app:their-api</api>
   </apis>
 </tool>
@@ -368,7 +368,7 @@ Unqualified names (e.g. `my-api`) refer to APIs in the same app. Use `<app-key>:
 ### System APIs (XP 8+)
 
 XP provides built-in admin APIs available to all admin tools:
-- `admin:widget` -- launcher widget
+- `admin:extension` -- admin extensions (renamed from `admin:widget` in XP 8)
 - `admin:event` -- server-sent events for real-time updates
 - `admin:status` -- connection health check
 
@@ -485,6 +485,35 @@ Admin tools provide full-page admin interfaces. Located in `admin/tools/<name>/`
 </tool>
 ```
 
+### Descriptor — XP 8 YAML (`admin/tools/dashboard/dashboard.yml`)
+
+XP 8 admin tools use YAML descriptors instead of XML:
+
+```yaml
+displayName:
+  text: "My Dashboard"
+  i18n: "admin.tool.dashboard.displayName"
+description:
+  text: "Application dashboard"
+  i18n: "admin.tool.dashboard.description"
+allow:
+  - "role:system.admin"
+apis:
+  - "admin:extension"
+  - "admin:event"
+  - "admin:status"
+  - "my-api"
+```
+
+> **Warning:** Plain strings in `displayName`/`description` (e.g. `displayName: "My Dashboard"`) cause NPE in XP 8's `AdminToolMapper`. Always use the `{ text, i18n }` object format.
+
+**i18n entries** — each admin tool needs matching entries in `i18n/phrases.properties`:
+
+```properties
+admin.tool.dashboard.displayName=My Dashboard
+admin.tool.dashboard.description=Application dashboard
+```
+
 ### Controller (`admin/tools/dashboard/dashboard.js`)
 
 ```js
@@ -510,13 +539,22 @@ exports.get = function(req) {
 ```
 
 **Admin lib functions** (`/lib/xp/admin`):
+
+XP 7 + 8:
+- `getLocales()` -- active locales for the admin session
+- `getToolUrl(app, tool)` -- URL for a specific admin tool
+- `widgetUrl({ application, widget, params })` -- URL for an admin widget
+
+XP 7 only (removed in XP 8):
 - `getAssetsUri()` -- base URL for admin UI assets
 - `getBaseUri()` -- base URL for admin console
 - `getLauncherPath()` -- URL to the admin launcher script
-- `getLocales()` -- active locales for the admin session
-- `getToolUrl(app, tool)` -- URL for a specific admin tool
-- `getHomeToolUrl()` -- URL for the admin home tool
-- `widgetUrl({ application, widget, params })` -- URL for an admin widget
+
+XP 8+ only:
+- `getHomeToolUrl({ type? })` -- URL for the admin home tool (`type: 'server'` for server-relative URL)
+- `extensionUrl({ application, extension, type?, params? })` -- URL for an admin extension
+- `getInstallation()` -- installation info
+- `getVersion()` -- XP version string
 
 In admin tools where portal context isn't available, use `/lib/enonic/asset` instead of `/lib/xp/portal` for asset URLs:
 
@@ -594,7 +632,7 @@ var admin = require('/lib/xp/admin');
 var portal = require('/lib/xp/portal');
 
 var config = {
-    adminUrl: admin.getBaseUri(),
+    adminUrl: admin.getHomeToolUrl({ type: 'server' }),
     appId: app.name,
     assetsUri: portal.assetUrl({ path: '' }),
     launcherUrl: admin.widgetUrl({ application: 'admin', widget: 'widget' }),
@@ -602,7 +640,7 @@ var config = {
 };
 
 var params = {
-    adminAssetsUri: admin.getAssetsUri(),
+    adminAssetsUri: portal.assetUrl({ path: '' }),
     assetsUri: portal.assetUrl({ path: '' }),
     configScriptId: app.name + '.config',
     configAsJson: JSON.stringify(config).replace(/<(\/?script|!--)/gi, '\\u003C$1')
@@ -622,6 +660,11 @@ Key differences from XP 7:
 - **Inline JSON config** — embedded in a `<script type="application/json">` block, no extra HTTP request
 - **Launcher via `widgetUrl()`** — replaces `getLauncherPath()` + `<script async>`
 - **XSS protection** — `replace(/<(\/?script|!--)/gi, '\\u003C$1')` prevents script injection in JSON
+
+### Icons
+
+- `application.svg` — shown in the Applications list (app-level icon)
+- `admin/tools/<name>/<name>.svg` — shown in the launcher tile (tool-level, must match descriptor filename)
 
 ### Content-Security-Policy
 

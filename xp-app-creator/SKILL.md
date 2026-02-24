@@ -4,7 +4,7 @@ description: >
   Enonic XP application development guide. Covers project setup (vanilla JS and
   TypeScript), component creation (pages, parts, layouts), content type schemas
   (content types, mixins, x-data), all 19 input types, controller patterns
-  (JS and TS), site configuration, and build system (Gradle, tsup, webpack).
+  (JS and TS), site configuration, and build system (Gradle, tsup, webpack, Vite).
   Use when creating a new XP app, adding components or content types to an
   existing app, writing controllers, or configuring the build pipeline.
 license: MIT
@@ -12,12 +12,12 @@ compatibility: Claude Code, Codex
 allowed-tools: Bash(mkdir:*) Read Write Edit
 metadata:
   author: enonic
-  xp-version: "7.16"
+  xp-version: "7.16+"
 ---
 
 ## Critical Rules
 
-1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, and `<task>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`), `<service>` descriptors, and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace.
+1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, and `<task>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`), `<service>` descriptors, and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace. **XP 8 admin tools use `.yml` descriptors** instead of XML — see `references/controllers.md`.
 2. **File naming** -- Component directory name must match descriptor filename: `parts/my-part/my-part.xml`. Content types: `content-types/article/article.xml`.
 3. **Controller resolution** -- XP looks for `<name>.js` next to `<name>.xml`. In TS apps, tsup/webpack compiles `<name>.ts` to `<name>.js` in `build/resources/main/`.
 4. **Form field names** -- Must be unique within a form. Use `name` attribute on `<input>`, not `id`.
@@ -51,7 +51,7 @@ metadata:
 | Service | `services/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
 | API | `apis/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
 | Task | `tasks/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
-| Admin tool | `admin/tools/<name>/<name>.xml` + `.js`/`.ts` + `.html` | `references/controllers.md` |
+| Admin tool | `admin/tools/<name>/<name>.xml` (`.yml` for XP 8) + `.js`/`.ts` + `.html` | `references/controllers.md` |
 | Widget | `admin/widgets/<name>/<name>.xml` + `.js`/`.ts` + `.html` | `references/controllers.md` |
 | Error handler | `error/error.js`/`.ts` | `references/controllers.md` |
 | Response processor | `site/processors/<name>.js`/`.ts` | `references/controllers.md` |

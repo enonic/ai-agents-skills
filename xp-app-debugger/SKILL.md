@@ -22,6 +22,7 @@ metadata:
 4. **Large logs get a subagent** -- Never read a full `server.log` in the main context. Spawn a haiku subagent to extract ERROR/WARN entries.
 5. **Don't deploy unless asked** -- Never run `./gradlew deploy` or equivalent without explicit user approval.
 6. **Check sibling repos** -- List the parent directory (`ls ..`) for related apps or libraries that may contribute to the error.
+7. **Read logs directly** -- Never trust user descriptions of log output. Users scanning fast-scrolling logs miss entries or misread them. Always grep/read the log file yourself before concluding something is present or absent.
 
 ## Workflow
 
@@ -29,8 +30,9 @@ metadata:
 
 - **User pastes logs**: Parse directly, identify error type (build or runtime).
 - **User says "check the logs"**: Read `$XP_HOME/logs/server.log`. Use a haiku subagent for large files (see Reading Large Logs below).
+- **User says "app doesn't load" or "nothing in logs"**: Grep `server.log` for the app name (e.g. `grep -i "com.enonic.app.myapp" $XP_HOME/logs/server.log | tail -20`). If there are zero matches, the app was never seen by XP — this points to a deploy path mismatch, not an app error. Actual failures (incompatible version, broken code) always produce log entries.
 - **User says "debug my app"**: Ask whether to deploy first. If yes, use project-specific deploy instructions from CLAUDE.md/README, or fall back to `./gradlew deploy`.
-- Identify error type: build failure (Gradle/TS) or runtime error (server.log stack trace).
+- Identify error type: build failure (Gradle/TS), runtime error (server.log stack trace), or silent failure (app not visible to XP at all).
 - Locate relevant files: source (`src/main/resources/`) and compiled (`build/resources/main/`).
 
 **Gate**: Present findings — error type, location, relevant files. Ask user before proceeding to analysis.

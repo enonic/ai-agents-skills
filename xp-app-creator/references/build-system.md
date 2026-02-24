@@ -20,6 +20,7 @@ app {
 dependencies {
     implementation "com.enonic.xp:core-api:${xpVersion}"
     implementation "com.enonic.xp:portal-api:${xpVersion}"
+    implementation "com.enonic.xp:admin-api:${xpVersion}"  // Required for admin tools
     include "com.enonic.xp:lib-content:${xpVersion}"
     include "com.enonic.xp:lib-portal:${xpVersion}"
     include "com.enonic.lib:lib-thymeleaf:2.1.1"
@@ -41,6 +42,8 @@ repositories {
 ```
 
 > XP 8 apps use plugin version 4.x: `id 'com.enonic.xp.app' version '4.0.0'`
+
+> **Gradle compatibility:** Plugin 3.x requires Gradle ≤ 8.x. Plugin 4.x supports Gradle 9+.
 
 ### gradle.properties
 
@@ -66,6 +69,9 @@ rootProject.name = projectName
 Uncomment as needed in `dependencies`:
 
 ```gradle
+// API dependencies (implementation scope)
+// implementation "com.enonic.xp:admin-api:${xpVersion}"  // Required for admin tools
+
 // Core platform libraries
 include "com.enonic.xp:lib-admin:${xpVersion}"
 include "com.enonic.xp:lib-auth:${xpVersion}"
@@ -484,7 +490,9 @@ For Webpack-based TS apps, use `.swcrc`:
 }
 ```
 
-## Vite (XP 8)
+## Vite
+
+Vite is a build tool choice, not tied to XP version. Examples below target XP 8 (plugin 4.x, `PnpmTask`), but Vite works with XP 7+ — swap `PnpmTask` for `NpmTask` and use plugin 3.x.
 
 XP 8 apps typically use Vite instead of tsup or webpack, paired with **pnpm** as the package manager. Vite provides faster builds and uses esbuild for transpilation.
 
@@ -558,6 +566,37 @@ Key options:
 - **`es2023` target** — matches XP 8's Node >= 24 requirement
 - **Dual build** — JS and CSS are built separately because Vite's CSS extraction works differently with library mode; the CSS build produces a throwaway JS file
 
+### Server-Side TypeScript
+
+Vite only handles client-side assets. Server-side `.ts` controllers need a separate build step targeting CJS for XP's GraalJS engine. Options: esbuild (recommended), tsc, or SWC. Place the build script at `esbuild.server.js` and add a `build:server` pnpm script.
+
+**`esbuild.server.js`**:
+
+```js
+const esbuild = require('esbuild');
+const glob = require('glob');
+
+const entryPoints = glob.sync('src/main/resources/**/*.ts', {
+    ignore: ['src/main/resources/assets/**']
+});
+
+esbuild.buildSync({
+    entryPoints,
+    bundle: true,
+    platform: 'neutral',
+    format: 'cjs',
+    target: 'es2023',
+    outdir: 'build/resources/main',
+    outbase: 'src/main/resources',
+    mainFields: ['module', 'main'],
+    external: ['/lib/*'],
+    sourcemap: false,
+    minify: false,
+});
+```
+
+The script auto-discovers `.ts` entry points under `src/main/resources/` (excluding `assets/`), bundles each into CJS, and externalizes all XP libraries (`/lib/*`).
+
 ### PostCSS Pipeline
 
 For LESS + PostCSS, install:
@@ -579,6 +618,7 @@ plugins {
 node {
     download = true
     version = '24.13.0'
+    pnpmVersion = '10.12.1'
 }
 
 tasks.register('pnpmBuild', PnpmTask) {
@@ -594,20 +634,34 @@ tasks.register('pnpmBuild', PnpmTask) {
     outputs.upToDateWhen { false }
 }
 
-jar.dependsOn pnpmBuild
+processResources {
+    exclude 'assets/js/**'
+    exclude 'assets/styles/**'
+}
+
+tasks.named('jar').configure { dependsOn tasks.named('pnpmBuild') }
 ```
+
+Exclude by directory — Vite writes compiled output to `build/resources/main/assets/` directly. Use lazy task wiring (`tasks.named`) instead of direct task references for Gradle 9+ compatibility.
 
 The `package.json` scripts invoke Vite with the target:
 
 ```json
 {
+    "packageManager": "pnpm@10.12.1",
+    "engines": {
+        "node": ">=24.0.0"
+    },
     "scripts": {
-        "build": "pnpm run build:js && pnpm run build:css",
+        "build": "pnpm run build:server && pnpm run build:js && pnpm run build:css",
+        "build:server": "node esbuild.server.js",
         "build:js": "BUILD_TARGET=js vite build",
         "build:css": "BUILD_TARGET=css vite build"
     }
 }
 ```
+
+Keep `packageManager` and `engines` in sync with Gradle's `node.version` / `node.pnpmVersion`.
 
 ## Build Commands
 
