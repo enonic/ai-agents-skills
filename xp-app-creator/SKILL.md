@@ -17,7 +17,7 @@ metadata:
 
 ## Critical Rules
 
-1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, and `<task>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`), `<service>` descriptors, and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace. **XP 8 admin tools use `.yml` descriptors** instead of XML — see `references/controllers.md`.
+1. **XML namespace** -- Descriptors for `<tool>`, `<widget>`, `<api>`, and `<task>` use `xmlns="urn:enonic:xp:model:1.0"`. Component descriptors (`<page>`, `<part>`, `<layout>`), `<service>` descriptors, and schema files (`<content-type>`, `<mixin>`, `<x-data>`, `<site>`, `<application>`) do NOT use a namespace. **XP 8 uses `.yml` descriptors** for admin tools, APIs, and webapps instead of XML — see `references/controllers.md`.
 2. **File naming** -- Component directory name must match descriptor filename: `parts/my-part/my-part.xml`. Content types: `content-types/article/article.xml`.
 3. **Controller resolution** -- XP looks for `<name>.js` next to `<name>.xml`. In TS apps, tsup/webpack compiles `<name>.ts` to `<name>.js` in `build/resources/main/`.
 4. **Form field names** -- Must be unique within a form. Use `name` attribute on `<input>`, not `id`.
@@ -37,6 +37,7 @@ metadata:
 - `src/main/resources/application.xml` -- exists with description
 - `src/main/resources/site/site.xml` -- exists if building a site app (delete for webapp-only)
 - `.enonic` -- links project to sandbox (created by CLI)
+- `gradlew` -- Gradle wrapper must be present. If missing, run `gradle wrapper --gradle-version latest`
 
 ## Quick Reference: Creating Components
 
@@ -49,7 +50,7 @@ metadata:
 | Mixin | `site/mixins/<name>/<name>.xml` | `references/content-types.md` |
 | X-Data | `site/x-data/<name>/<name>.xml` | `references/content-types.md` |
 | Service | `services/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
-| API | `apis/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
+| API | `apis/<name>/<name>.yml` (`.xml` for XP 7) + `.js`/`.ts` | `references/controllers.md` |
 | Task | `tasks/<name>/<name>.xml` + `.js`/`.ts` | `references/controllers.md` |
 | Admin tool | `admin/tools/<name>/<name>.xml` (`.yml` for XP 8) + `.js`/`.ts` + `.html` | `references/controllers.md` |
 | Widget | `admin/widgets/<name>/<name>.xml` + `.js`/`.ts` + `.html` | `references/controllers.md` |
