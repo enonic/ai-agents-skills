@@ -13,6 +13,15 @@ Concise heuristics from past debug sessions. Max ~5 lines per entry. Prune when 
 
 ---
 
+## API not found — wrong descriptor format (XP 8)
+
+**Symptom**: Browser gets `API [com.example.app:my-api] not found` (404). JAR contains `apis/<name>/<name>.xml` and `apis/<name>/<name>.js` correctly.
+**Cause**: XP 8 uses `YmlApiDescriptorParser` — it only looks for `.yml` descriptors. XML descriptors are silently ignored, so the API is never registered.
+**Fix**: Rename `<name>.xml` → `<name>.yml` and convert to YAML format: `allow:\n  - "role:system.admin"`.
+**Applies to**: XP 8+ (XP 7 uses XML). Same applies to admin tool and webapp descriptors.
+
+---
+
 ## Silent app — no log entries at all
 
 **Symptom**: User reports "app doesn't load" or "I can't see it in logs". Grepping `server.log` for the app name returns zero results.

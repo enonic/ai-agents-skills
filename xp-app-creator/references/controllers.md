@@ -265,7 +265,7 @@ exports.get = function(req) {
 
 `getPhrases(locales, bundles)` returns all key-value pairs from the specified bundles as a flat object. The frontend stores these and uses them for UI text lookup.
 
-> **XP 8+**: Implement as a Universal API at `apis/i18n/i18n.js` with an `apis/i18n/i18n.xml` descriptor. The controller code is identical. Use `apiUrl({ api: 'i18n' })` for URL resolution, and declare `<api>i18n</api>` in the admin tool descriptor's `<apis>` element.
+> **XP 8+**: Implement as a Universal API at `apis/i18n/i18n.js` with an `apis/i18n/i18n.yml` descriptor. The controller code is identical. Use `apiUrl({ api: 'i18n' })` for URL resolution, and declare `"i18n"` in the admin tool descriptor's `apis` list.
 
 ## API Controllers (Universal API — XP 8+)
 
@@ -273,12 +273,23 @@ Universal APIs replace services as the recommended way to expose HTTP endpoints 
 
 ### Location and URL
 
-- Files: `apis/<name>/<name>.xml` + `<name>.js`
+- Files: `apis/<name>/<name>.yml` + `<name>.js` (XP 8 uses `.yml`; XP 7 used `.xml`)
 - URL: `/api/<app-name>/<api-name>/`
 - In controllers: `portal.apiUrl({ api: 'my-api' })`
 - Cross-app: `portal.apiUrl({ api: 'other-api', application: 'com.other.app' })`
 
-### Descriptor (`apis/content/content.xml`)
+### Descriptor — XP 8 YAML (`apis/content/content.yml`)
+
+XP 8 uses YAML descriptors for APIs (`YmlApiDescriptorParser`). Using `.xml` will silently fail — XP won't find the API.
+
+```yaml
+allow:
+  - "role:system.authenticated"
+```
+
+Omit `allow` for public access. The descriptor is optional — without it, the API is accessible to everyone.
+
+### Descriptor — XP 7 XML (`apis/content/content.xml`)
 
 ```xml
 <api xmlns="urn:enonic:xp:model:1.0">
@@ -347,7 +358,19 @@ const installUrl = apiUrl({ api: 'my-api', path: 'sub/endpoint' });
 
 ### APIs in Admin Tool Descriptors
 
-Admin tools must declare which APIs they use via the `<apis>` element:
+Admin tools must declare which APIs they use. In XP 8, use `apis` in the YAML descriptor:
+
+```yaml
+# admin/tools/dashboard/dashboard.yml (XP 8)
+apis:
+  - "admin:extension"
+  - "admin:event"
+  - "admin:status"
+  - "my-api"
+  - "com.other.app:their-api"
+```
+
+In XP 7, use the `<apis>` XML element:
 
 ```xml
 <tool xmlns="urn:enonic:xp:model:1.0">
@@ -379,10 +402,11 @@ Declare them in `<apis>` alongside your custom APIs. No descriptor files needed 
 | | APIs (XP 8+) | Services (XP 7+) |
 |---|---|---|
 | Location | `apis/<name>/` | `services/<name>/` |
+| Descriptor | `<name>.yml` (XP 8) / `<name>.xml` (XP 7) | `<name>.xml` |
 | URL pattern | `/api/<app>/<name>/` | `/_/service/<app>/<name>` |
 | URL helper | `apiUrl({ api })` | `serviceUrl({ service })` |
-| Access control | `<allow>` in descriptor | `<allow>` in descriptor |
-| Admin tool integration | Declared via `<apis>` | Always available |
+| Access control | `allow` in descriptor | `<allow>` in descriptor |
+| Admin tool integration | Declared via `apis` | Always available |
 
 ## Task Controllers
 

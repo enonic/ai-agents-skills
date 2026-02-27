@@ -64,9 +64,9 @@ my-app/
         │       ├── <name>.xml       # Access control (optional)
         │       └── <name>.js
         │
-        ├── apis/                    # API endpoints (newer convention)
+        ├── apis/                    # API endpoints (XP 8+)
         │   └── <name>/
-        │       ├── <name>.xml       # Access control
+        │       ├── <name>.yml       # Access control (XP 8 uses .yml, XP 7 uses .xml)
         │       └── <name>.js
         │
         ├── tasks/                   # Background tasks
