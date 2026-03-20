@@ -12,7 +12,7 @@ compatibility: Claude Code, Codex
 allowed-tools: Bash(mkdir:*) Read Write Edit
 metadata:
   author: enonic
-  xp-version: "7.16+"
+  xp-version: "7.16+ / 8.0+"
 ---
 
 ## Critical Rules
@@ -25,6 +25,7 @@ metadata:
 6. **Content type naming** -- Full name is `${app}:type-name` where `${app}` resolves to the application key (e.g. `com.example.myapp`).
 7. **App types** -- Three patterns: **Site apps** use `site/` directory (pages, parts, content-types). **Webapps** use `webapp/webapp.js` as entry point. **Admin tools** use `admin/tools/` only (no `site/`, no `webapp/`).
 8. **processResources exclusion** -- TS apps must exclude source files from JAR: `.ts`, `.tsx`, `.json` (tsconfig files). Only compiled `.js` should be in the JAR.
+9. **GraalJS for XP 8** -- XP 8 apps should use GraalJS (not Nashorn) as the server-side JS engine. Set `scriptEngine = "GraalJS"` in the `build.gradle` `app` block. This enables ES2023 features (optional chaining, `for...of`, `Array.includes()`, `Number.isNaN()`, etc.) and strict mode. Server-side esbuild/tsup target must be `es2023` (not `es5`/`es2015`). See `references/build-system.md` for full configuration.
 
 ## Initialization
 

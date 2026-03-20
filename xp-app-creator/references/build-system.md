@@ -41,7 +41,7 @@ repositories {
 }
 ```
 
-> XP 8 apps use plugin version 4.x: `id 'com.enonic.xp.app' version '4.0.0'`
+> XP 8 apps use plugin version 4.x: `id 'com.enonic.xp.app' version '4.0.0'` and should add `scriptEngine = "GraalJS"` to the `app` block (see [GraalJS section](#graaljs-xp-8)).
 
 > **Gradle compatibility:** Plugin 3.x requires Gradle ≤ 8.x. Plugin 4.x supports Gradle 9+.
 
@@ -250,6 +250,8 @@ Add `@enonic-types/lib-*` packages matching the XP libs you use in Gradle.
 
 **`src/main/resources/tsconfig.json`** -- server-side controllers:
 
+XP 7 (Nashorn — target ES5/ES2015, CommonJS):
+
 ```json
 {
     "include": ["**/*.ts"],
@@ -265,7 +267,33 @@ Add `@enonic-types/lib-*` packages matching the XP libs you use in Gradle.
 }
 ```
 
-The `paths` mapping lets you write `import { getContent } from '/lib/xp/content'` and get proper type checking.
+XP 8 (GraalJS — target ES2023, ES2022 module):
+
+```json
+{
+    "include": ["**/*.ts"],
+    "exclude": ["**/*.d.ts", "assets/**/*.*"],
+    "compilerOptions": {
+        "target": "ES2023",
+        "module": "ES2022",
+        "moduleResolution": "bundler",
+        "lib": ["ES2023"],
+        "noEmit": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "paths": {
+            "/lib/xp/*": ["../../../node_modules/@enonic-types/lib-*"],
+            "/*": ["./*"]
+        },
+        "types": ["@enonic-types/global"]
+    }
+}
+```
+
+The `paths` mapping lets you write `import { getContent } from '/lib/xp/content'` and get proper type checking. The XP 8 config uses `moduleResolution: "bundler"` since esbuild/tsup handles module resolution, and targets ES2023 to match GraalJS capabilities.
 
 **`src/main/resources/assets/tsconfig.json`** -- client-side assets:
 
@@ -350,7 +378,7 @@ export default function buildServerConfig(): Options {
         shims: false,
         splitting: true,
         sourcemap: false,
-        target: 'es5',
+        target: 'es5', // XP 8 with GraalJS: use 'es2023' instead
         tsconfig: `${DIR_SRC}/tsconfig.json`,
     };
 }
@@ -490,6 +518,8 @@ For Webpack-based TS apps, use `.swcrc`:
 }
 ```
 
+> XP 8 with GraalJS: change `"target"` to `"es2023"`.
+
 ## Vite
 
 Vite is a build tool choice, not tied to XP version. Examples below target XP 8 (plugin 4.x, `PnpmTask`), but Vite works with XP 7+ — swap `PnpmTask` for `NpmTask` and use plugin 3.x.
@@ -615,6 +645,15 @@ plugins {
     id 'com.github.node-gradle.node' version '7.1.0'
 }
 
+app {
+    name = "${appName}"
+    displayName = "${appDisplayName}"
+    vendorName = "${vendorName}"
+    vendorUrl = "${vendorUrl}"
+    systemVersion = "${xpVersion}"
+    scriptEngine = "GraalJS"
+}
+
 node {
     download = true
     version = '24.13.0'
@@ -662,6 +701,84 @@ The `package.json` scripts invoke Vite with the target:
 ```
 
 Keep `packageManager` and `engines` in sync with Gradle's `node.version` / `node.pnpmVersion`.
+
+## GraalJS (XP 8)
+
+XP 8 ships GraalJS (GraalVM 25) which supports up to ES2025. Apps targeting XP 8 should enable GraalJS and target ES2023 for server-side code. Nashorn remains the default for backwards compatibility, but GraalJS is the recommended engine for new XP 8 apps.
+
+### Enabling GraalJS
+
+**Per-app (recommended)** — add `scriptEngine` to the `app` block in `build.gradle`:
+
+```gradle
+app {
+    name = "${appName}"
+    displayName = "${appDisplayName}"
+    vendorName = "${vendorName}"
+    vendorUrl = "${vendorUrl}"
+    systemVersion = "${xpVersion}"
+    scriptEngine = "GraalJS"
+}
+```
+
+The Gradle plugin (v4.x) writes this as an `X-Script-Engine` OSGi bundle header in the JAR manifest. XP reads the header at deploy time — no server restart needed.
+
+**Globally (alternative)** — set in `XP_HOME/config/system.properties`:
+
+```properties
+xp.script-engine=GraalJS
+```
+
+Requires full XP restart. Affects all deployed apps.
+
+### Build Target Changes
+
+With GraalJS, server-side build tools should target `es2023` instead of `es5`/`es2015`:
+
+**esbuild** (`esbuild.server.js`):
+
+```js
+esbuild.buildSync({
+    // ...
+    format: 'cjs',
+    target: 'es2023', // was 'es2015' for Nashorn
+    // No need for: supported: { 'for-of': false }
+});
+```
+
+**tsup** (`tsup/server.ts`):
+
+```ts
+return {
+    // ...
+    format: 'cjs',
+    target: 'es2023', // was 'es5' for Nashorn
+};
+```
+
+The output format stays `cjs` — XP's module system expects CommonJS regardless of engine.
+
+### What GraalJS Enables
+
+Modern JS features that were unavailable on Nashorn:
+
+- `for...of` loops (with `let`/`const` bindings)
+- `Array.prototype.includes()`, `Object.values()`, `Object.entries()`
+- `Number.isNaN()`, `Number.isFinite()`
+- Optional chaining (`?.`) and nullish coalescing (`??`)
+- Destructuring, spread/rest in all positions
+- `async`/`await` (though XP controllers are synchronous)
+- Template literals with proper tag support
+- `Symbol`, `Map`, `Set`, `WeakMap`, `WeakSet`
+- `Promise.allSettled()`, `Promise.any()`
+- `Array.prototype.at()`, `Object.hasOwn()`
+
+### Migration Gotchas (Nashorn → GraalJS)
+
+1. **Strict mode enforced** — GraalJS sets `js.strict=true`. Code relying on sloppy-mode behavior will break (e.g., implicit globals, `arguments.callee`).
+2. **No implicit type coercion** — passing `undefined` where Java expects `boolean` throws `TypeError` instead of coercing to `false`.
+3. **Java interop** — must use `Java.type('com.foo.Bar')` instead of bare `com.foo.Bar`. Standard `lib-*` usage is unaffected since XP wraps the interop.
+4. **Threading model** — GraalJS contexts cannot be shared across threads. XP handles this internally, but custom Java interop relying on Nashorn's threading model may break.
 
 ## Build Commands
 
