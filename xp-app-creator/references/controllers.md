@@ -265,7 +265,7 @@ exports.get = function(req) {
 
 `getPhrases(locales, bundles)` returns all key-value pairs from the specified bundles as a flat object. The frontend stores these and uses them for UI text lookup.
 
-> **XP 8+**: Implement as a Universal API at `apis/i18n/i18n.js` with an `apis/i18n/i18n.yml` descriptor. The controller code is identical. Use `apiUrl({ api: 'i18n' })` for URL resolution, and declare `"i18n"` in the admin tool descriptor's `apis` list.
+> **XP 8+**: Implement as a Universal API at `apis/i18n/i18n.js` with an `apis/i18n/i18n.yaml` descriptor. The controller code is identical. Use `apiUrl({ api: 'i18n' })` for URL resolution, and declare `"i18n"` in the admin tool descriptor's `apis` list.
 
 ## API Controllers (Universal API — XP 8+)
 
@@ -273,21 +273,23 @@ Universal APIs replace services as the recommended way to expose HTTP endpoints 
 
 ### Location and URL
 
-- Files: `apis/<name>/<name>.yml` + `<name>.js` (XP 8 uses `.yml`; XP 7 used `.xml`)
+- Files: `apis/<name>/<name>.yaml` + `<name>.js` (XP 8 uses `.yaml`; XP 7 used `.xml`)
 - URL: `/api/<app-name>/<api-name>/`
 - In controllers: `portal.apiUrl({ api: 'my-api' })`
 - Cross-app: `portal.apiUrl({ api: 'other-api', application: 'com.other.app' })`
 
-### Descriptor — XP 8 YAML (`apis/content/content.yml`)
+### Descriptor — XP 8 YAML (`apis/content/content.yaml`)
 
-XP 8 uses YAML descriptors for APIs (`YmlApiDescriptorParser`). Using `.xml` will silently fail — XP won't find the API.
+XP 8 uses YAML descriptors for APIs. The file must end in `.yaml` and declare both `kind: "API"` and a plain-string `title`. Omitting `kind` fails deployment with `Invalid kind "null". Expected "API"`.
 
 ```yaml
+kind: "API"
+title: "Content API"
 allow:
   - "role:system.authenticated"
 ```
 
-Omit `allow` for public access. The descriptor is optional — without it, the API is accessible to everyone.
+Omit `allow` for public access. `kind` and `title` are required; `allow` is optional.
 
 ### Descriptor — XP 7 XML (`apis/content/content.xml`)
 
@@ -361,7 +363,7 @@ const installUrl = apiUrl({ api: 'my-api', path: 'sub/endpoint' });
 Admin tools must declare which APIs they use. In XP 8, use `apis` in the YAML descriptor:
 
 ```yaml
-# admin/tools/dashboard/dashboard.yml (XP 8)
+# admin/tools/dashboard/dashboard.yaml (XP 8) — snippet
 apis:
   - "admin:extension"
   - "admin:event"
@@ -402,7 +404,7 @@ Declare them in `<apis>` alongside your custom APIs. No descriptor files needed 
 | | APIs (XP 8+) | Services (XP 7+) |
 |---|---|---|
 | Location | `apis/<name>/` | `services/<name>/` |
-| Descriptor | `<name>.yml` (XP 8) / `<name>.xml` (XP 7) | `<name>.xml` |
+| Descriptor | `<name>.yaml` (XP 8) / `<name>.xml` (XP 7) | `<name>.xml` |
 | URL pattern | `/api/<app>/<name>/` | `/_/service/<app>/<name>` |
 | URL helper | `apiUrl({ api })` | `serviceUrl({ service })` |
 | Access control | `allow` in descriptor | `<allow>` in descriptor |
@@ -509,14 +511,15 @@ Admin tools provide full-page admin interfaces. Located in `admin/tools/<name>/`
 </tool>
 ```
 
-### Descriptor — XP 8 YAML (`admin/tools/dashboard/dashboard.yml`)
+### Descriptor — XP 8 YAML (`admin/tools/dashboard/dashboard.yaml`)
 
-XP 8 admin tools use YAML descriptors instead of XML:
+XP 8 admin tools use YAML descriptors instead of XML. The file must declare `kind: "AdminTool"` and use the `title` field (renamed from `displayName` in earlier XP 8 alphas). Omitting `kind` fails deployment with `Invalid kind "null". Expected "AdminTool"`.
 
 ```yaml
-displayName:
+kind: "AdminTool"
+title:
   text: "My Dashboard"
-  i18n: "admin.tool.dashboard.displayName"
+  i18n: "admin.tool.dashboard.title"
 description:
   text: "Application dashboard"
   i18n: "admin.tool.dashboard.description"
@@ -529,12 +532,12 @@ apis:
   - "my-api"
 ```
 
-> **Warning:** Plain strings in `displayName`/`description` (e.g. `displayName: "My Dashboard"`) cause NPE in XP 8's `AdminToolMapper`. Always use the `{ text, i18n }` object format.
+> **Warning:** Plain strings in `title`/`description` (e.g. `title: "My Dashboard"`) cause NPE in XP 8's `AdminToolMapper`. Always use the `{ text, i18n }` object format for admin tool labels. (APIs use plain-string `title` — the object form is admin-tool-specific.)
 
 **i18n entries** — each admin tool needs matching entries in `i18n/phrases.properties`:
 
 ```properties
-admin.tool.dashboard.displayName=My Dashboard
+admin.tool.dashboard.title=My Dashboard
 admin.tool.dashboard.description=Application dashboard
 ```
 

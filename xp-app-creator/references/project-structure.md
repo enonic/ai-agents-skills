@@ -24,7 +24,8 @@ my-app/
 └── src/main/
     ├── java/                        # Optional Java code (OSGi services)
     └── resources/
-        ├── application.xml          # App descriptor
+        ├── application.xml          # App descriptor (XP 7)
+        ├── application.yaml         # App descriptor (XP 8 — replaces .xml, requires `kind: "Application"`)
         ├── application.svg          # App icon
         ├── main.js / main.ts        # App lifecycle (optional)
         ├── tsconfig.json            # [TS only] Server-side TS config
@@ -66,7 +67,7 @@ my-app/
         │
         ├── apis/                    # API endpoints (XP 8+)
         │   └── <name>/
-        │       ├── <name>.yml       # Access control (XP 8 uses .yml, XP 7 uses .xml)
+        │       ├── <name>.yaml      # XP 8: requires `kind: "API"` + `title` (XP 7 uses <name>.xml)
         │       └── <name>.js
         │
         ├── tasks/                   # Background tasks
@@ -77,7 +78,7 @@ my-app/
         ├── admin/
         │   ├── tools/               # Admin tool UIs
         │   │   └── <name>/
-        │   │       ├── <name>.xml
+        │   │       ├── <name>.yaml  # XP 8: requires `kind: "AdminTool"` + `title` (XP 7 uses <name>.xml)
         │   │       ├── <name>.js
         │   │       └── <name>.html
         │   └── widgets/             # Admin widgets
@@ -126,7 +127,9 @@ xpVersion = 7.16.1                 # Required XP version
 - Config file name: `com.example.my-app.cfg`
 - JAR artifact name
 
-### application.xml
+### application.xml / application.yaml
+
+XP 7 (`application.xml`):
 
 ```xml
 <application>
@@ -134,7 +137,14 @@ xpVersion = 7.16.1                 # Required XP version
 </application>
 ```
 
-Minimal required file. Description shown in XP admin.
+XP 8 (`application.yaml`) — replaces the XML form and requires an explicit `kind`:
+
+```yaml
+kind: "Application"
+description: "My Application"
+```
+
+Minimal required file. Description shown in XP admin. Missing `kind` in XP 8 fails deployment with `Invalid kind "null". Expected "Application"`.
 
 ### site.xml
 
