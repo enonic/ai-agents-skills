@@ -390,6 +390,8 @@ In XP 7, use the `<apis>` XML element:
 
 Unqualified names (e.g. `my-api`) refer to APIs in the same app. Use `<app-key>:<api-name>` for cross-app references. The `<apis>` element is XP 8+ only. XP 7 admin tools do not declare APIs — services are implicitly available.
 
+> **Gotcha:** The list is strictly enforced. Calling an API not declared here fails at runtime with `API [<app>:<name>] is not mounted` — no build error, no startup warning. When adding a new API to an existing app, always update this list too; it's easy to forget during incremental development.
+
 ### System APIs (XP 8+)
 
 XP provides built-in admin APIs available to all admin tools:
