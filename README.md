@@ -30,22 +30,23 @@ Install directly from this GitHub repo into `~/.codex/skills`:
 ```bash
 python ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
   --repo enonic/ai-agents-skills \
-  --path <skill-name>
+  --path skills/<skill-name>
 ```
 
 No `.curated` folder is required for this repo; installs use explicit `--path` values.
 
 ## Skill Structure
 
-Each skill is a top-level directory containing at minimum a `SKILL.md` file:
+Skills live under the `skills/` directory. Each skill is a subdirectory containing at minimum a `SKILL.md` file:
 
 ```
-<skill-name>/
-├── SKILL.md              # Required — frontmatter + instructions
-├── agents/               # Optional — agent-specific configs (e.g. openai.yaml)
-├── scripts/              # Optional — executable code
-├── references/           # Optional — additional documentation
-└── assets/               # Optional — templates, images, data files
+skills/
+└── <skill-name>/
+    ├── SKILL.md              # Required — frontmatter + instructions
+    ├── agents/               # Optional — agent-specific configs (e.g. openai.yaml)
+    ├── scripts/              # Optional — executable code
+    ├── references/           # Optional — additional documentation
+    └── assets/               # Optional — templates, images, data files
 ```
 
 The `SKILL.md` file contains YAML frontmatter (`name`, `description`) followed by Markdown instructions:
@@ -68,14 +69,14 @@ See the full [Agent Skills specification](https://agentskills.io/specification) 
 
 | Skill | Description | Agent | Category |
 | ----- | ----------- | ----- | -------- |
-| [enonic-cli](enonic-cli/) | Reference for the Enonic CLI. Covers project, sandbox, data, and server commands. | Claude Code, Codex | CLI |
-| [skill-report](skill-report/) | Records skill failures for author review and improvement. | Claude Code, Codex | Tooling |
-| [xp-app-creator](xp-app-creator/) | Enonic XP application guide. Covers project setup, components, schemas, controllers, and build configuration. | Claude Code, Codex | Development |
-| [xp-app-debugger](xp-app-debugger/) | Debug XP application build failures and server runtime errors. | Claude Code | Development |
+| [enonic-cli](skills/enonic-cli/) | Reference for the Enonic CLI. Covers project, sandbox, data, and server commands. | Claude Code, Codex | CLI |
+| [skill-report](skills/skill-report/) | Records skill failures for author review and improvement. | Claude Code, Codex | Tooling |
+| [xp-app-creator](skills/xp-app-creator/) | Enonic XP application guide. Covers project setup, components, schemas, controllers, and build configuration. | Claude Code, Codex | Development |
+| [xp-app-debugger](skills/xp-app-debugger/) | Debug XP application build failures and server runtime errors. | Claude Code | Development |
 
 ## Creating a Skill
 
-1. Create a directory at the repo root matching the skill name
+1. Create a directory under `skills/` matching the skill name
 2. Add a `SKILL.md` with required `name` and `description` frontmatter
 3. Write Markdown instructions in the body (keep under 500 lines)
 4. Optionally add `scripts/`, `references/`, or `assets/` directories

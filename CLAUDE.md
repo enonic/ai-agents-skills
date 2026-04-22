@@ -4,14 +4,15 @@ A collection of AI agent skills for Enonic development workflows following the [
 
 ## Repository Structure
 
-Each skill lives as a top-level directory in the repo root. This repo IS the skills collection — there is no nested `skills/` subdirectory.
+Skills live under the `skills/` directory (required by Claude Code 2.1.117+, which rejects plugin skill paths pointing to the plugin root).
 
 ```
-<skill-name>/
-├── SKILL.md              # Required — frontmatter + instructions
-├── scripts/              # Optional — executable code (bash, python, js)
-├── references/           # Optional — additional docs loaded on demand
-└── assets/               # Optional — templates, images, data files
+skills/
+└── <skill-name>/
+    ├── SKILL.md              # Required — frontmatter + instructions
+    ├── scripts/              # Optional — executable code (bash, python, js)
+    ├── references/           # Optional — additional docs loaded on demand
+    └── assets/               # Optional — templates, images, data files
 ```
 
 ## How Skills Load (Progressive Disclosure)
@@ -130,8 +131,8 @@ The `description` determines when an agent activates the skill. Be specific and 
 
 ## Creating a New Skill
 
-1. Create a directory at the repo root: `mkdir <skill-name>`
-2. Create `<skill-name>/SKILL.md` with required frontmatter and instructions
+1. Create a directory under `skills/`: `mkdir skills/<skill-name>`
+2. Create `skills/<skill-name>/SKILL.md` with required frontmatter and instructions
 3. Add `scripts/`, `references/`, or `assets/` directories as needed
 4. Update the "Available Skills" table in `README.md`
 5. Validate via `skill-audit` skill if available
@@ -148,7 +149,7 @@ The `description` determines when an agent activates the skill. Be specific and 
 `marketplace.json` and `plugin.json` have **different schemas** — do not mix their fields.
 
 - **`marketplace.json`** — marketplace registry entry. Plugin objects support: `commands`, `agents`, `hooks`, `mcpServers`, `lspServers`. **No `skills` field.** Adding `skills` here causes validation error: `plugins.0.skills: Invalid input`.
-- **`plugin.json`** — plugin manifest. Declares `skills` as a path (e.g. `"skills": "./"`) for skill directory discovery.
+- **`plugin.json`** — plugin manifest. Declares `skills` as a path (e.g. `"skills": "./skills"`) for skill directory discovery. The path must resolve to a subdirectory of the plugin root; `"./"` is rejected by Claude Code 2.1.117+ as "path escapes plugin directory".
 
 Skills are discovered automatically from the path declared in `plugin.json`. No per-skill registration is needed in either file.
 

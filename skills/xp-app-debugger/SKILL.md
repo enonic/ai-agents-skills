@@ -143,14 +143,14 @@ Don't duplicate XP knowledge — load from `xp-app-creator` references when need
 
 | Topic | Reference file |
 |-------|---------------|
-| Controller patterns (JS/TS) | `xp-app-creator/references/controllers.md` |
-| Component structure (pages, parts, layouts) | `xp-app-creator/references/components.md` |
-| Build system (Gradle, tsup, webpack) | `xp-app-creator/references/build-system.md` |
-| Content API | `xp-app-creator/references/content-api.md` |
-| Content types and schemas | `xp-app-creator/references/content-types.md` |
-| Input types | `xp-app-creator/references/input-types.md` |
-| Site configuration | `xp-app-creator/references/site-config.md` |
-| Project structure | `xp-app-creator/references/project-structure.md` |
+| Controller patterns (JS/TS) | `../xp-app-creator/references/controllers.md` |
+| Component structure (pages, parts, layouts) | `../xp-app-creator/references/components.md` |
+| Build system (Gradle, tsup, webpack) | `../xp-app-creator/references/build-system.md` |
+| Content API | `../xp-app-creator/references/content-api.md` |
+| Content types and schemas | `../xp-app-creator/references/content-types.md` |
+| Input types | `../xp-app-creator/references/input-types.md` |
+| Site configuration | `../xp-app-creator/references/site-config.md` |
+| Project structure | `../xp-app-creator/references/project-structure.md` |
 
 ## Known Patterns
 
