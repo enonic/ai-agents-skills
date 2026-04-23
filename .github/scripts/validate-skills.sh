@@ -31,14 +31,15 @@ errors=0
 
 while IFS= read -r skill; do
   skill_file="$skill/SKILL.md"
+  skill_dir=$(basename "$skill")
 
   # Check required frontmatter: name
   name=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep -E '^name:' | head -1 | sed 's/^name:[[:space:]]*//')
   if [ -z "$name" ]; then
     echo "::error::$skill_file missing required 'name' frontmatter"
     errors=1
-  elif [ "$name" != "$skill" ]; then
-    echo "::error::$skill_file 'name: $name' does not match directory '$skill'"
+  elif [ "$name" != "$skill_dir" ]; then
+    echo "::error::$skill_file 'name: $name' does not match directory '$skill_dir'"
     errors=1
   fi
 
