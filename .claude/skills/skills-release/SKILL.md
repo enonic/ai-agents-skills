@@ -156,10 +156,10 @@ git commit -m "Release v{{VERSION}}"
 
 ### Step 6: Create Git Tag
 
-Tag the release commit:
+Tag the release commit. Use an **annotated** tag — lightweight tags are skipped by `git push --follow-tags`, and annotated tags carry tagger/date/message metadata visible in `git show` and on the GitHub releases page.
 
 ```bash
-git tag v{{VERSION}}
+git tag -a v{{VERSION}} -m "Release v{{VERSION}}"
 ```
 
 ### Step 7: User Approval Before Push
@@ -190,10 +190,10 @@ If user selects **Other**, follow their instructions.
 
 ### Step 8: Push Release
 
-Only after user approves:
+Only after user approves. Push branch and tag atomically with `--follow-tags` so a `push`-triggered CI workflow can't race ahead of a tag-triggered one, and stray local tags don't leak (which `--tags` would do).
 
 ```bash
-git push && git push --tags
+git push --follow-tags
 ```
 
 After pushing, get the remote URL and print:

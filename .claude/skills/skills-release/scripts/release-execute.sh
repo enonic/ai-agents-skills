@@ -90,9 +90,10 @@ git add "$PLUGIN_JSON" "$MARKETPLACE_JSON"
 git commit -m "Release $TAG_NAME"
 echo "SUCCESS: Committed version bump"
 
-# Create tag
-git tag "$TAG_NAME"
-echo "SUCCESS: Tag $TAG_NAME created"
+# Create annotated tag — required for `git push --follow-tags` to actually
+# ship it, and adds tagger/date metadata visible in `git show`.
+git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+echo "SUCCESS: Tag $TAG_NAME created (annotated)"
 
 # Check if we have a remote
 REMOTE=$(git remote | head -n 1)
@@ -104,20 +105,17 @@ fi
 
 echo "Remote: $REMOTE"
 
-# Push commits and tags
-echo "Pushing commits..."
-if git push "$REMOTE" HEAD; then
-  echo "SUCCESS: Commits pushed"
-else
-  echo "ERROR: Failed to push commits"
-  exit 1
-fi
+CURRENT_BRANCH=$(git branch --show-current)
 
-echo "Pushing tags..."
-if git push "$REMOTE" --tags; then
-  echo "SUCCESS: Tags pushed"
+# Atomic push: branch + reachable annotated tags in one operation.
+# Avoids the race where a `push`-triggered CI workflow fires on the bare
+# commit before the tag arrives. Also avoids leaking unrelated local tags
+# that `--tags` would ship.
+echo "Pushing $CURRENT_BRANCH and $TAG_NAME atomically..."
+if git push --follow-tags "$REMOTE" "$CURRENT_BRANCH"; then
+  echo "SUCCESS: Branch and tag pushed"
 else
-  echo "ERROR: Failed to push tags"
+  echo "ERROR: Push failed"
   exit 1
 fi
 
