@@ -5,10 +5,15 @@
 #
 # Usage: release-bump.sh [version|keyword]
 #   No arg / "strip" : strip -SNAPSHOT from current version
-#   "patch"          : bump patch from current base (e.g. 0.0.7-SNAPSHOT -> 0.0.8)
-#   "minor"          : bump minor from current base (e.g. 0.0.7-SNAPSHOT -> 0.1.0)
-#   "major"          : bump major from current base (e.g. 0.0.7-SNAPSHOT -> 1.0.0)
+#   "patch"          : next patch from latest v* tag (e.g. v0.0.6 -> 0.0.7)
+#   "minor"          : next minor from latest v* tag (e.g. v0.0.6 -> 0.1.0)
+#   "major"          : next major from latest v* tag (e.g. v0.0.6 -> 1.0.0)
 #   X.Y.Z            : explicit version
+#
+# Bump keywords are computed from the latest semver tag in the repo, NOT from
+# the snapshot's base version. The snapshot's base alone tells you nothing
+# about which bump type was intended (3.0.0-SNAPSHOT could be major/minor/patch
+# depending on what was previously released).
 #
 # Env:
 #   RELEASE_COMMIT_MSG: optional override for the commit message
@@ -33,9 +38,26 @@ if [[ ! "$BASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
   echo "ERROR: Cannot parse base version from '$BASE' (expected X.Y.Z)"
   exit 1
 fi
-MAJ="${BASH_REMATCH[1]}"
-MIN="${BASH_REMATCH[2]}"
-PCH="${BASH_REMATCH[3]}"
+
+# Resolve bump keywords from the latest canonical v<X.Y.Z> tag.
+LAST_TAG=$(git for-each-ref --sort=-v:refname --format='%(refname:short)' 'refs/tags/v*' 2>/dev/null \
+  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+if [[ -n "$LAST_TAG" ]]; then
+  LAST_VER="${LAST_TAG#v}"
+  if [[ "$LAST_VER" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+    LMAJ="${BASH_REMATCH[1]}"
+    LMIN="${BASH_REMATCH[2]}"
+    LPCH="${BASH_REMATCH[3]}"
+  fi
+fi
+
+bump_requires_tag() {
+  if [[ -z "$LAST_TAG" ]]; then
+    echo "ERROR: No prior v<X.Y.Z> tag found — '$1' bump has no reference point"
+    echo "INFO: Use 'strip' or pass an explicit version (e.g. 0.0.7)"
+    exit 1
+  fi
+}
 
 # Resolve target version from arg or keyword
 ARG="${1:-strip}"
@@ -44,13 +66,16 @@ case "$ARG" in
     VERSION="$BASE"
     ;;
   patch)
-    VERSION="$MAJ.$MIN.$((PCH + 1))"
+    bump_requires_tag patch
+    VERSION="$LMAJ.$LMIN.$((LPCH + 1))"
     ;;
   minor)
-    VERSION="$MAJ.$((MIN + 1)).0"
+    bump_requires_tag minor
+    VERSION="$LMAJ.$((LMIN + 1)).0"
     ;;
   major)
-    VERSION="$((MAJ + 1)).0.0"
+    bump_requires_tag major
+    VERSION="$((LMAJ + 1)).0.0"
     ;;
   *)
     VERSION="$ARG"

@@ -6,14 +6,16 @@
 #
 # Output keys (one per line, KEY=VALUE):
 #   CURRENT_VERSION    Current version from gradle.properties
-#   BASE_VERSION       Version with -SNAPSHOT stripped
-#   LAST_TAG           Last v* tag (empty if none)
-#   STRIP_VERSION      Candidate: strip -SNAPSHOT
-#   PATCH_VERSION      Candidate: patch bump from base
-#   MINOR_VERSION      Candidate: minor bump from base
-#   MAJOR_VERSION      Candidate: major bump from base
-#   RECOMMENDED        One of: strip, patch, minor, major
+#   BASE_VERSION       Current with -SNAPSHOT stripped
+#   LAST_TAG           Most recent v<X.Y.Z> tag (empty if none)
+#   RECENT_TAGS        Up to 5 most recent v<X.Y.Z> tags, space-separated
+#   STRIP_VERSION      Snapshot base — what the developer aimed for
+#   PATCH_VERSION      Patch bump computed from LAST_TAG (empty if no tag)
+#   MINOR_VERSION      Minor bump computed from LAST_TAG (empty if no tag)
+#   MAJOR_VERSION      Major bump computed from LAST_TAG (empty if no tag)
+#   SNAPSHOT_INTENT    How BASE relates to LAST_TAG: patch | minor | major | other | first
 #   COMMIT_COUNT       Commits since last tag
+#   RECOMMENDED        Always "strip" — release the snapshot as-is unless overridden
 
 set -e
 
@@ -38,16 +40,46 @@ if [[ ! "$BASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
   echo "ERROR: Cannot parse base version from '$BASE' (expected X.Y.Z)"
   exit 1
 fi
-MAJOR="${BASH_REMATCH[1]}"
-MINOR="${BASH_REMATCH[2]}"
-PATCH="${BASH_REMATCH[3]}"
 
 STRIP_VERSION="$BASE"
-PATCH_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-MINOR_VERSION="$MAJOR.$((MINOR + 1)).0"
-MAJOR_VERSION="$((MAJOR + 1)).0.0"
 
-LAST_TAG=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags/v\* 2>/dev/null | head -1 || echo "")
+# Find recent semver tags. Filter to canonical vX.Y.Z (no prereleases) and
+# version-sort so v1.0.10 ranks above v1.0.9.
+ALL_SEMVER_TAGS=$(git for-each-ref --sort=-v:refname --format='%(refname:short)' 'refs/tags/v*' 2>/dev/null \
+  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+LAST_TAG=$(echo "$ALL_SEMVER_TAGS" | head -1)
+RECENT_TAGS=$(echo "$ALL_SEMVER_TAGS" | head -5 | tr '\n' ' ' | sed 's/ *$//')
+
+# Bump candidates are computed from LAST_TAG, not from the snapshot's BASE.
+# X.Y.Z-SNAPSHOT can encode any bump type (major/minor/patch); BASE alone
+# tells us nothing about which.
+PATCH_VERSION=""
+MINOR_VERSION=""
+MAJOR_VERSION=""
+if [[ -n "$LAST_TAG" ]]; then
+  LAST_VER="${LAST_TAG#v}"
+  if [[ "$LAST_VER" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+    LMAJ="${BASH_REMATCH[1]}"
+    LMIN="${BASH_REMATCH[2]}"
+    LPCH="${BASH_REMATCH[3]}"
+    PATCH_VERSION="$LMAJ.$LMIN.$((LPCH + 1))"
+    MINOR_VERSION="$LMAJ.$((LMIN + 1)).0"
+    MAJOR_VERSION="$((LMAJ + 1)).0.0"
+  fi
+fi
+
+# Classify what the snapshot was intended as, by comparing BASE to bump candidates.
+if [[ -z "$LAST_TAG" ]]; then
+  SNAPSHOT_INTENT="first"
+elif [[ "$BASE" == "$MAJOR_VERSION" ]]; then
+  SNAPSHOT_INTENT="major"
+elif [[ "$BASE" == "$MINOR_VERSION" ]]; then
+  SNAPSHOT_INTENT="minor"
+elif [[ "$BASE" == "$PATCH_VERSION" ]]; then
+  SNAPSHOT_INTENT="patch"
+else
+  SNAPSHOT_INTENT="other"
+fi
 
 # Commits since last tag (or all commits if no tag)
 if [[ -n "$LAST_TAG" ]]; then
@@ -57,31 +89,28 @@ else
 fi
 COMMIT_COUNT=$(git log --oneline "$RANGE" 2>/dev/null | wc -l | tr -d ' ')
 
-# Heuristic: scan commit subjects for breaking / feat / fix patterns.
-# Works for Conventional Commits AND keyword-flavored plain-English logs.
-SUBJECTS=$(git log --pretty=format:'%s' "$RANGE" 2>/dev/null || echo "")
-
+# Default recommendation: trust the snapshot. The developer already chose a
+# version when bumping to -SNAPSHOT; releasing as-is matches their intent.
 RECOMMENDED="strip"
-if echo "$SUBJECTS" | grep -qiE '(BREAKING CHANGE|^[a-z]+!:|^breaking|major bump)'; then
-  RECOMMENDED="major"
-elif echo "$SUBJECTS" | grep -qiE '(^feat(\(.+\))?:|^add |new feature|minor bump)'; then
-  RECOMMENDED="minor"
-elif [[ "$COMMIT_COUNT" -gt 0 ]]; then
-  RECOMMENDED="strip"
-fi
-
-# When the current version is already 0.0.x, conservative default is "strip"
-# unless commits clearly signal a bump.
 
 echo "CURRENT_VERSION=$CURRENT"
 echo "BASE_VERSION=$BASE"
 echo "LAST_TAG=$LAST_TAG"
+echo "RECENT_TAGS=$RECENT_TAGS"
 echo "STRIP_VERSION=$STRIP_VERSION"
 echo "PATCH_VERSION=$PATCH_VERSION"
 echo "MINOR_VERSION=$MINOR_VERSION"
 echo "MAJOR_VERSION=$MAJOR_VERSION"
+echo "SNAPSHOT_INTENT=$SNAPSHOT_INTENT"
 echo "COMMIT_COUNT=$COMMIT_COUNT"
 echo "RECOMMENDED=$RECOMMENDED"
+echo ""
+echo "=== Recent tags (up to 5) ==="
+if [[ -n "$RECENT_TAGS" ]]; then
+  for t in $RECENT_TAGS; do echo "  $t"; done
+else
+  echo "  (none — first release)"
+fi
 echo ""
 echo "=== Commits since ${LAST_TAG:-first commit} ($COMMIT_COUNT) ==="
 git log --oneline "$RANGE" 2>/dev/null | head -30

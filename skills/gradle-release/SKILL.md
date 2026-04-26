@@ -112,28 +112,41 @@ If the script reports `ERROR:` at any step, stop and surface the message to the 
 bash scripts/release-analyze.sh
 ```
 
-Output is `KEY=VALUE` lines plus a commit list. Key fields:
+Output is `KEY=VALUE` lines plus a tag and commit list. Key fields:
 
 - `CURRENT_VERSION` — what's in `gradle.properties` now
-- `STRIP_VERSION` — current with `-SNAPSHOT` removed (most common pick)
-- `PATCH_VERSION` / `MINOR_VERSION` / `MAJOR_VERSION` — bump candidates
-- `RECOMMENDED` — `strip` / `patch` / `minor` / `major`, based on commit-message heuristics (`BREAKING`, `feat:`, `fix:`)
+- `LAST_TAG` — most recent canonical `v<X.Y.Z>` tag (empty if no releases yet)
+- `RECENT_TAGS` — up to 5 most recent `v<X.Y.Z>` tags, space-separated, for context
+- `STRIP_VERSION` — the snapshot's base, what the developer aimed for
+- `PATCH_VERSION` / `MINOR_VERSION` / `MAJOR_VERSION` — bump candidates **computed from `LAST_TAG`** (empty when no prior tag)
+- `SNAPSHOT_INTENT` — how `BASE` relates to `LAST_TAG`: `patch` / `minor` / `major` / `other` / `first`
+- `RECOMMENDED` — defaults to `strip` (release the snapshot as-is)
 
-The heuristic is conservative — it defaults to `strip` (releasing the current dev version as-is) unless commit messages explicitly signal a bigger bump. For Enonic projects with plain-English commits, `strip` is almost always right.
+**How bump candidates work:** The snapshot's base alone tells you nothing about which bump type was intended. `3.0.0-SNAPSHOT` could be a major bump (last release `v2.5.3`), a minor bump (last release `v2.999.0`), or just the next patch (last release `v2.999.999`). The analyzer therefore computes patch/minor/major against `LAST_TAG`, not against `BASE`.
+
+`SNAPSHOT_INTENT` tells you what category the developer's snapshot already falls into. If the user accepts `strip`, that's the bump they get — no need to also pick `major`/`minor`/`patch`.
+
+**No prior tag:** `PATCH_VERSION` / `MINOR_VERSION` / `MAJOR_VERSION` are empty and `SNAPSHOT_INTENT=first`. Only `strip` (or an explicit version) is meaningful.
 
 ### Step 3: Confirm target version with user
 
 If the user passed an explicit version or keyword to the skill, use it and skip the prompt.
 
+Show the user `LAST_TAG` and `RECENT_TAGS` so they have context for what's already been released.
+
 Otherwise ask via `AskUserQuestion` (see [Asking the User](#asking-the-user)):
 
-- **question**: "Which version to release?"
-- **Option 1** — header `Strip`, label `Strip -SNAPSHOT (e.g. {STRIP_VERSION})` — `Release the current dev version as-is.`
-- **Option 2** — header `Patch`, label `Patch bump (e.g. {PATCH_VERSION})` — `Skip current and bump patch — bug fixes only.`
-- **Option 3** — header `Minor`, label `Minor bump (e.g. {MINOR_VERSION})` — `New features, breaking changes pre-1.0.`
-- **Option 4** — header `Major`, label `Major bump (e.g. {MAJOR_VERSION})` — `Breaking changes (post-1.0).`
+- **question**: "Which version to release? (last tag: {LAST_TAG})"
+- **Option 1** — header `Strip`, label `Release snapshot as-is — {STRIP_VERSION} ({SNAPSHOT_INTENT})` — `Trust the snapshot's intent. Most common pick.`
+- **Option 2** — header `Patch`, label `Patch bump from {LAST_TAG} — {PATCH_VERSION}` — `Override snapshot. Bug fixes only.`
+- **Option 3** — header `Minor`, label `Minor bump from {LAST_TAG} — {MINOR_VERSION}` — `Override snapshot. New features.`
+- **Option 4** — header `Major`, label `Major bump from {LAST_TAG} — {MAJOR_VERSION}` — `Override snapshot. Breaking changes.`
 
-Substitute the placeholders with the values from `release-analyze.sh`. Append ` (Recommended)` to the label of the option matching the analyzer's `RECOMMENDED` value (`strip` / `patch` / `minor` / `major`).
+Substitute placeholders from `release-analyze.sh`. Append ` (Recommended)` to the option matching `RECOMMENDED`.
+
+**Deduplication:** When `STRIP_VERSION` equals one of the bump versions, drop the redundant bump option. Example: `0.0.7-SNAPSHOT` with last tag `v0.0.6` produces `STRIP=0.0.7` and `PATCH=0.0.7` — drop Patch. The Strip label already shows `(patch)` as the snapshot intent.
+
+**No prior tag (`SNAPSHOT_INTENT=first`):** Present only the Strip option. Patch/Minor/Major have no reference point; the bump script will reject those keywords.
 
 ### Step 4: Bump, commit, tag
 
@@ -144,7 +157,7 @@ bash scripts/release-bump.sh <version|keyword>
 Accepts:
 
 - No arg or `strip` — strip `-SNAPSHOT` (e.g. `0.0.7-SNAPSHOT` → `0.0.7`)
-- `patch` / `minor` / `major` — bump from current base
+- `patch` / `minor` / `major` — next bump from latest `v<X.Y.Z>` tag (errors if no tag exists)
 - `0.1.0` (or any explicit semver) — use as-is
 
 The script:
