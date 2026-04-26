@@ -137,8 +137,8 @@ git commit -m "$COMMIT_MSG"
 COMMIT_SHA=$(git rev-parse --short HEAD)
 echo "Committed: $COMMIT_SHA $COMMIT_MSG"
 
-# Tag
-git tag "$TAG"
+# Tag (annotated — required for `git push --follow-tags` and shows tagger/date)
+git tag -a "$TAG" -m "Release $TAG"
 echo "Tagged: $TAG -> $COMMIT_SHA"
 
 echo "SUCCESS: Local commit and tag created"
