@@ -70,6 +70,7 @@ See the full [Agent Skills specification](https://agentskills.io/specification) 
 | Skill | Description | Agent | Category |
 | ----- | ----------- | ----- | -------- |
 | [enonic-cli](skills/enonic-cli/) | Reference for the Enonic CLI. Covers project, sandbox, data, and server commands. | Claude Code, Codex | CLI |
+| [gradle-release](skills/gradle-release/) | Release workflow for gradle+npm hybrid packages: bump `gradle.properties` and `package.json`, commit, tag, push to trigger CI release. | Claude Code, Codex | Release |
 | [skill-report](skills/skill-report/) | Records skill failures for author review and improvement. | Claude Code, Codex | Tooling |
 | [xp-app-creator](skills/xp-app-creator/) | Enonic XP application guide. Covers project setup, components, schemas, controllers, and build configuration. | Claude Code, Codex | Development |
 | [xp-app-debugger](skills/xp-app-debugger/) | Debug XP application build failures and server runtime errors. | Claude Code | Development |
