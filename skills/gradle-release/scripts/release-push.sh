@@ -41,9 +41,13 @@ if [[ "$TAG_SHA" != "$HEAD_SHA" ]]; then
   exit 1
 fi
 
-# Push commit + tag atomically
+# Push commit + tag atomically.
+# --follow-tags: client-side, includes reachable annotated tags in the push.
+# --atomic:      server-side, makes the multi-ref update transactional —
+#                if the tag is rejected (protection rule, hook, race), the
+#                branch update rolls back too. No partial state on origin.
 echo "Pushing $CURRENT_BRANCH and $LATEST_TAG to origin..."
-if git push --follow-tags origin "$CURRENT_BRANCH"; then
+if git push --follow-tags --atomic origin "$CURRENT_BRANCH"; then
   echo "SUCCESS: Pushed $LATEST_TAG"
 else
   echo "ERROR: Push failed"

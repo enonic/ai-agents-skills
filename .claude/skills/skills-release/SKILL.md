@@ -190,10 +190,13 @@ If user selects **Other**, follow their instructions.
 
 ### Step 8: Push Release
 
-Only after user approves. Push branch and tag atomically with `--follow-tags` so a `push`-triggered CI workflow can't race ahead of a tag-triggered one, and stray local tags don't leak (which `--tags` would do).
+Only after user approves. Push branch and tag transactionally:
+
+- `--follow-tags` — bundle reachable annotated tags into the same push.
+- `--atomic` — server-side all-or-nothing; if the tag is rejected (protection rule, hook, race), the branch update rolls back too.
 
 ```bash
-git push --follow-tags
+git push --follow-tags --atomic
 ```
 
 After pushing, get the remote URL and print:

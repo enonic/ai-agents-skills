@@ -107,12 +107,13 @@ echo "Remote: $REMOTE"
 
 CURRENT_BRANCH=$(git branch --show-current)
 
-# Atomic push: branch + reachable annotated tags in one operation.
-# Avoids the race where a `push`-triggered CI workflow fires on the bare
-# commit before the tag arrives. Also avoids leaking unrelated local tags
-# that `--tags` would ship.
+# Atomic push: branch + reachable annotated tags in one transactional operation.
+# --follow-tags: client-side, packages branch + reachable annotated tags.
+# --atomic:      server-side, all-or-nothing. If tag is rejected (protection
+#                rule, hook, race), the branch update rolls back too — no
+#                partial state where the commit lands but the tag doesn't.
 echo "Pushing $CURRENT_BRANCH and $TAG_NAME atomically..."
-if git push --follow-tags "$REMOTE" "$CURRENT_BRANCH"; then
+if git push --follow-tags --atomic "$REMOTE" "$CURRENT_BRANCH"; then
   echo "SUCCESS: Branch and tag pushed"
 else
   echo "ERROR: Push failed"
